@@ -66,13 +66,15 @@ model = joblib.load("disaster_prediction_pipeline.pkl")
 
 
 app = FastAPI()
-#enable CORS for all origins
-@app.middleware("http")
-async def add_cors_header(request, call_next):
-    response = await call_next(request)
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins, change to specific origins for better security
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.get("/")
 async def read_root():
@@ -81,12 +83,20 @@ async def read_root():
 
 @app.get("/items/{state_name}/{year}/{reduction_rate}")
 async def read_item(state_name: str, year: int, reduction_rate: float):
-    # Load the model inside the function
-    co2_emission = state_emission_sums[state_name]
-    co2_emission = co2_emission * (1 - reduction_rate)
-    predictions = model.predict([[co2_emission, data_preprocessing.year_encoding(year), data_preprocessing.map_state_to_encoding(state_name)]])
-    print(predictions)
-    return {"predictions": predictions.tolist()}
+    try:
+        if state_name not in state_emission_sums:
+            return {"error": "State not found"}
+        # Load the model inside the function
+        co2_emission = state_emission_sums[state_name]
+        co2_emission = co2_emission * (1 - reduction_rate)
+        predictions = model.predict([[co2_emission, data_preprocessing.year_encoding(year), data_preprocessing.map_state_to_encoding(state_name)]])
+        print(predictions)
+        return {"predictions": predictions.tolist()}
+    except KeyError as e:
+        return {"error": f'Invalid state: {state_name}'}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 
 if __name__ == "__main__":
