@@ -2,6 +2,9 @@ from typing import Union
 
 from fastapi import FastAPI
 
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from pkg import data_preprocessing
 
 import joblib
@@ -67,6 +70,22 @@ model = joblib.load("disaster_prediction_pipeline.pkl")
 
 app = FastAPI()
 
+# Define the allowed origins
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://example.com",
+]
+
+# Add CORS middleware to the app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
 
 @app.get("/")
 async def read_root():
@@ -79,8 +98,8 @@ async def read_item(state_name: str, year: int, reduction_rate: float):
     co2_emission = state_emission_sums[state_name]
     co2_emission = co2_emission * (1 - reduction_rate)
     predictions = model.predict([[co2_emission, data_preprocessing.year_encoding(year), data_preprocessing.map_state_to_encoding(state_name)]])
-    print(predictions)
-    return {"predictions": predictions.tolist()}
+    return JSONResponse(content={"predictions": predictions.tolist()}, headers={"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"})
+
 
 
 if __name__ == "__main__":
