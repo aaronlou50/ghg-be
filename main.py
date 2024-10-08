@@ -2,6 +2,9 @@ from typing import Union
 
 from fastapi import FastAPI
 
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from pkg import data_preprocessing
 
 import joblib
@@ -91,7 +94,7 @@ async def read_item(state_name: str, year: int, reduction_rate: float):
         co2_emission = co2_emission * (1 - reduction_rate)
         predictions = model.predict([[co2_emission, data_preprocessing.year_encoding(year), data_preprocessing.map_state_to_encoding(state_name)]])
         print(predictions)
-        return {"predictions": predictions.tolist()}
+        return JSONResponse(content={"predictions": predictions.tolist()}, headers={"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"})
     except KeyError as e:
         return {"error": f'Invalid state: {state_name}'}
     except Exception as e:
